@@ -130,12 +130,14 @@ export function ReviewView({ job }: { job: Job }) {
   // keyboard shortcuts: A accept, E edit-mode, R reject, J/K navigate
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const target = e.target as HTMLElement;
+      if (submitting || e.metaKey || e.ctrlKey || e.altKey || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable || target.closest('[role="combobox"], [role="listbox"], [role="dialog"]')) return;
       const k = e.key.toLowerCase();
       if (k === "a") submit("accept");
       else if (k === "r") submit("reject");
       else if (k === "e") {
-        if (!editMode) {
+        if (editMode) submit("edit");
+        else {
           setEdited(current?.payload ?? null);
           setEditMode(true);
         }
@@ -145,7 +147,7 @@ export function ReviewView({ job }: { job: Job }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, editMode, items.length]);
+  }, [current, editMode, items.length, submitting, edited]);
 
   const reviewedCount = items.filter((i) => i.reviewerAction).length;
 

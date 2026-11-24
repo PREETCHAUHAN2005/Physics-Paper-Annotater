@@ -21,6 +21,14 @@ test("outside paper -> suggestions -> review -> export -> reload", async ({ page
   await page.getByRole("button", { name: "Run now", exact: true }).click();
   await expect(page.getByText("3 / 3 units routed", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Review Queue", exact: true }).click();
+  await page.getByRole("button", { name: /^Edit E$/ }).click();
+  const chapter = page.getByRole("combobox", { name: "Chapter", exact: true });
+  await chapter.focus();
+  await page.keyboard.press("r");
+  await expect(page.getByText("Already reviewed:", { exact: false })).toHaveCount(0);
+  await chapter.selectOption("Current Electricity");
+  await page.getByRole("button", { name: /^Save edit/ }).click();
+  await expect(page.getByText("Already reviewed:", { exact: false })).toContainText("edit");
   await expect(page.getByRole("button", { name: "Accept all", exact: true })).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Accept all", exact: true }).click();

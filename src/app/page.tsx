@@ -63,7 +63,7 @@ export default function Home() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable || Boolean(target.closest('[role="combobox"], [role="listbox"]'));
       if (isInput) return;
 
       // Cmd/Ctrl+K → command palette

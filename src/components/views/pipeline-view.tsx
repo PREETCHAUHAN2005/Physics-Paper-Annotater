@@ -42,7 +42,7 @@ type LogEntry = { ts: number; type: string; text: string; tone: "info" | "ok" | 
 
 const AGENT_NODES = [
   { id: "taxonomy", label: "Taxonomy", sub: DEMO_MODE ? "keyword evidence" : "×3 · k=3", icon: Layers, tone: "emerald" as const },
-  { id: "difficulty", label: "Difficulty", sub: "×3 · k=3", icon: Gauge, tone: "teal" as const },
+  { id: "difficulty", label: "Difficulty", sub: DEMO_MODE ? "rule estimate" : "×3 · k=3", icon: Gauge, tone: "teal" as const },
   { id: "math", label: "Math", sub: DEMO_MODE ? "source expressions" : "×1 · LaTeX", icon: Cpu, tone: "violet" as const },
   { id: "language", label: "Language", sub: DEMO_MODE ? "script detection" : "×1 · hi/en", icon: Activity, tone: "amber" as const },
 ];

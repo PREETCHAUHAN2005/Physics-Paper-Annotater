@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Job, FinalRecord } from "@/lib/types";
-import { api } from "@/lib/api";
+import { api, DEMO_MODE } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +33,8 @@ export function ExportView({ job }: { job: Job }) {
   };
 
   const copyToClipboard = async () => {
-    const jsonl = eligible
-      .map((f) => JSON.stringify({ ...f.payload, reviewed_by: f.reviewedBy, reviewer_action: f.reviewerAction ?? "auto" }))
-      .join("\n");
+    const jsonl = DEMO_MODE ? (await import("@/lib/exports")).exportRecords(eligible, "jsonl")
+      : eligible.map((record) => JSON.stringify({ ...record.payload, reviewed_by: record.reviewedBy, reviewer_action: record.reviewerAction })).join("\n");
     try {
       await navigator.clipboard.writeText(jsonl);
       setCopied(true);
@@ -51,8 +50,7 @@ export function ExportView({ job }: { job: Job }) {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Export</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          ML-ready dataset. Only rows where <code className="text-primary text-xs">route=&apos;auto&apos;</code> OR{" "}
-          <code className="text-primary text-xs">reviewer_action IN (&apos;accept&apos;,&apos;edit&apos;)</code>.
+          Download approved annotations. Rejected, unreviewed, and test questions are excluded.
         </p>
       </div>
 

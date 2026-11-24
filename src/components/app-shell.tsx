@@ -131,6 +131,7 @@ export function AppShell({
                 return (
                   <button
                     key={item.key}
+                    aria-label={item.label}
                     onClick={() => {
                       onViewChange(item.key);
                       setMobileOpen(false);

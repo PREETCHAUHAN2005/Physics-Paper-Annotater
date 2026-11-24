@@ -12,6 +12,7 @@ import {
   Database,
   Zap,
 } from "lucide-react";
+import { api, DEMO_MODE } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type HealthStatus = {
@@ -33,11 +34,8 @@ export function PipelineHealth() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/health");
-        if (!cancelled && res.ok) {
-          const data = await res.json();
-          setHealth(data);
-        }
+        const data = await api.getHealth();
+        if (!cancelled) setHealth(data);
       } catch {
         /* ignore */
       }
@@ -91,7 +89,7 @@ export function PipelineHealth() {
         <div className="grid grid-cols-4 gap-2">
           <HealthMetric
             icon={Cpu}
-            label="Agents"
+            label={DEMO_MODE ? "Rule stages" : "Agents"}
             value={health.agentsAvailable}
             sub="available"
             tone="text-primary"

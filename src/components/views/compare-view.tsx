@@ -1,4 +1,6 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
+import { DemoSummary } from "@/components/demo-panels";
 
 import { useEffect, useState } from "react";
 import type { JobComparison } from "@/lib/types";
@@ -22,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 const BAR_COLORS = ["var(--foreground)", "var(--muted-foreground)", "var(--muted-foreground)", "var(--muted-foreground)"];
 
-export function CompareView() {
+function ServerCompareView() {
   const [jobs, setJobs] = useState<JobComparison[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -225,4 +227,8 @@ function ChartCard({ title, desc, icon: Icon, children }: { title: string; desc:
       </CardContent>
     </Card>
   );
+}
+
+export function CompareView() {
+  return DEMO_MODE ? <DemoSummary compare /> : <ServerCompareView />;
 }

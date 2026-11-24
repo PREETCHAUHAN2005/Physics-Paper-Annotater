@@ -1,4 +1,6 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
+import { DemoSummary } from "@/components/demo-panels";
 
 import { useEffect, useState } from "react";
 import type { InsightsStats } from "@/lib/types";
@@ -38,7 +40,7 @@ const DIFF_COLORS = ["var(--foreground)", "var(--muted-foreground)", "#f87171"];
 const BLOOM_COLORS = ["var(--foreground)", "var(--muted-foreground)", "var(--muted-foreground)", "var(--muted-foreground)"];
 const LANG_COLORS = ["var(--foreground)", "var(--muted-foreground)", "var(--muted-foreground)"];
 
-export function InsightsView() {
+function ServerInsightsView() {
   const [stats, setStats] = useState<InsightsStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -348,4 +350,8 @@ function KpiCard({
       </CardContent>
     </Card>
   );
+}
+
+export function InsightsView() {
+  return DEMO_MODE ? <DemoSummary /> : <ServerInsightsView />;
 }

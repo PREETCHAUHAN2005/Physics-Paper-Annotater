@@ -1,0 +1,4 @@
+Physics demo — Electricity and Optics
+1. A resistor has resistance 5 ohm in an electric circuit. Find the current when the potential difference is 10 V.
+2. A parallel plate capacitor contains a dielectric. Explain how its capacitance changes.
+3. A convex lens has a focal length of 20 cm. Find the image position for an object placed 30 cm from the lens.

@@ -1,4 +1,6 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
+import { DemoQuality } from "@/components/demo-panels";
 
 import { useEffect, useState } from "react";
 import type { Job, QualityStats } from "@/lib/types";
@@ -46,7 +48,7 @@ import { cn } from "@/lib/utils";
 const PIE_COLORS = ["var(--foreground)", "var(--muted-foreground)", "var(--muted-foreground)", "var(--muted-foreground)", "var(--muted-foreground)", "#f87171"];
 const LANG_COLORS = ["var(--foreground)", "var(--muted-foreground)", "var(--muted-foreground)"];
 
-export function QualityView({ job }: { job: Job }) {
+function ServerQualityView({ job }: { job: Job }) {
   const [stats, setStats] = useState<QualityStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -517,4 +519,8 @@ function KappaBar({
       <div className="text-[10px] text-muted-foreground mt-1">{kappa.n} units rated by k=3</div>
     </div>
   );
+}
+
+export function QualityView({ job }: { job: Job }) {
+  return DEMO_MODE ? <DemoQuality job={job} /> : <ServerQualityView job={job} />;
 }

@@ -1,18 +1,7 @@
-// Heuristic labelers — used as fallback when the LLM is rate-limited or
-// unparseable. These analyse the question text deterministically so the demo
-// always produces realistic, varied annotations with proper auto/human routing.
-// Agents are STILL called first (k=3 sampling, real LLM); these only run on
-// failure, keeping the architecture honest while making the demo robust.
+// Deterministic suggestions, not model predictions or calibrated probabilities.
+import type { DifficultyOut, LanguageOut, MathOut, TaxonomyOut } from "@/lib/schemas";
 
-import { CHAPTERS } from "@/lib/schemas";
-import type {
-  DifficultyOut,
-  LanguageOut,
-  MathOut,
-  TaxonomyOut,
-} from "@/lib/schemas";
-
-const CHAPTER_KEYWORDS: Record<string, string[]> = {
+export const CHAPTER_KEYWORDS: Record<string, string[]> = {
   "Units and Measurements": ["dimensional", "planck", "unit of", "significant figure", "least count", "vernier"],
   "Motion in a Straight Line": ["velocity", "displacement", "acceleration", "uniform", "retardation", "freely falling"],
   "Motion in a Plane": ["projectile", "angle", "range of", "trajectory", "relative velocity"],
@@ -44,140 +33,95 @@ const CHAPTER_KEYWORDS: Record<string, string[]> = {
   "Communication Systems": ["modulation", "antenna", "signal", "bandwidth", "amplitude modulation"],
 };
 
-function detectChapter(stem: string): string {
-  const lower = stem.toLowerCase();
-  let best: { chapter: string; score: number } | null = null;
-  for (const [chapter, kws] of Object.entries(CHAPTER_KEYWORDS)) {
-    let score = 0;
-    for (const kw of kws) {
-      if (lower.includes(kw)) score += kw.length > 6 ? 2 : 1;
-    }
-    if (score > 0 && (!best || score > best.score)) best = { chapter, score };
-  }
-  return best?.chapter ?? CHAPTERS[0];
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[’']/g, "").replace(/[-‐‑–—]/g, " ").replace(/\s+/g, " ");
 }
 
-function detectConcepts(stem: string, chapter: string): string[] {
-  const lower = stem.toLowerCase();
-  const kws = CHAPTER_KEYWORDS[chapter] ?? [];
-  const found = kws.filter((k) => lower.includes(k));
-  const concepts = found.slice(0, 3);
-  if (concepts.length === 0) concepts.push(chapter.toLowerCase().split(" ")[0]);
-  return concepts;
-}
+const GENERIC = new Set(["velocity", "uniform", "angle", "power", "pressure", "frequency", "wave", "charge", "flux", "current", "image", "signal", "threshold", "elastic", "amplitude"]);
+const EXTRA: Record<string, string[]> = {
+  "Units and Measurements": ["dimensions", "measurement uncertainty", "dimensional analysis", "मात्रक", "विमीय"],
+  "Motion in a Straight Line": ["straight line", "free fall", "त्वरण", "विस्थापन"],
+  "Motion in a Plane": ["circular motion", "centripetal", "प्रक्षेप्य"],
+  "Laws of Motion": ["newtons law", "घर्षण", "न्यूटन"],
+  "Work, Energy and Power": ["conservation of energy", "कार्य", "गतिज ऊर्जा"],
+  "System of Particles and Rotational Motion": ["centre of mass", "center of mass", "angular momentum", "बल आघूर्ण"],
+  "Gravitation": ["gravitational", "गुरुत्वाकर्षण"],
+  "Mechanical Properties of Solids": ["young modulus", "youngs modulus", "प्रत्यास्थता"],
+  "Mechanical Properties of Fluids": ["buoyancy", "archimedes", "दाब"],
+  "Thermal Properties of Matter": ["heat transfer", "ऊष्मीय प्रसार"],
+  "Thermodynamics": ["first law of thermodynamics", "ऊष्मागतिकी"],
+  "Kinetic Theory of Gases": ["gas molecules", "गैसों का अणुगति सिद्धांत"],
+  "Oscillations": ["shm", "सरल आवर्त", "दोलन"],
+  "Waves": ["standing wave", "ध्वनि", "डॉप्लर"],
+  "Electric Charges and Fields": ["विद्युत क्षेत्र", "कूलॉम"],
+  "Electrostatic Potential and Capacitance": ["संधारित्र", "धारिता"],
+  "Current Electricity": ["ohms law", "विद्युत धारा", "प्रतिरोध"],
+  "Moving Charges and Magnetism": ["lorentz", "चुंबकीय बल"],
+  "Magnetism and Matter": ["magnetic susceptibility", "चुंबकीय पदार्थ"],
+  "Electromagnetic Induction": ["induced current", "प्रेरित", "फैराडे"],
+  "Alternating Current": ["प्रत्यावर्ती", "प्रतिबाधा"],
+  "Electromagnetic Waves": ["विद्युत चुंबकीय तरंग"],
+  "Ray Optics and Optical Instruments": ["snells law", "लेंस", "दर्पण", "अपवर्तन"],
+  "Wave Optics": ["youngs double slit", "व्यतिकरण", "विवर्तन"],
+  "Dual Nature of Radiation and Matter": ["photo electric", "प्रकाश विद्युत", "डी ब्रॉग्ली"],
+  "Atoms": ["hydrogen spectrum", "बोर", "परमाणु"],
+  "Nuclei": ["half life", "radioactive", "नाभिक", "रेडियोधर्मी"],
+  "Semiconductor Electronics": ["अर्धचालक", "डायोड"],
+  "Communication Systems": ["संचार", "मॉडुलन"],
+};
 
-function detectDifficulty(stem: string): {
-  difficulty: "easy" | "medium" | "hard";
-  bloom: "remember" | "understand" | "apply" | "analyze";
-  rationale: string;
-} {
-  const lower = stem.toLowerCase();
-  const hasMultipleSteps = (lower.match(/and/g) || []).length >= 2;
-  const hasFormula = /[=∑∫√^²]/.test(stem) || /\\/.test(stem);
-  const isConceptual = /what is|define|the dimensional|the unit of|power factor is|image formed is/i.test(stem);
-  // extract a verbatim phrase from the stem to ground the rationale
-  const firstSentence = stem.split(/[.\n]/)[0].trim();
-  const phrase = firstSentence.length > 60 ? firstSentence.slice(0, 57) + "..." : firstSentence;
-
-  if (isConceptual && !hasFormula) {
-    return {
-      difficulty: "easy",
-      bloom: "remember",
-      rationale: `Question "${phrase}" asks a definitional concept.`,
-    };
-  }
-  if (hasMultipleSteps && hasFormula) {
-    return {
-      difficulty: "hard",
-      bloom: "analyze",
-      rationale: `Stem "${phrase}" requires multi-step calculation.`,
-    };
-  }
+export function taxonomyEvidence(stem: string) {
+  const text = normalize(stem);
+  const ranked = Object.entries(CHAPTER_KEYWORDS).map(([chapter, original]) => {
+    const matches = [...new Set([...original, ...(EXTRA[chapter] ?? [])])].filter((keyword) => {
+      const k = normalize(keyword).replace(/[.*+?^\$\{\}()|[\]\\]/g, "\\$&");
+      return new RegExp("(?:^|[^\\p{L}\\p{N}])" + k + "(?:s|al|ion)?(?=$|[^\\p{L}\\p{N}])", "u").test(text);
+    });
+    const points = matches.reduce((total, word) => total + (GENERIC.has(word) ? 0.5 : 2 + (word.includes(" ") ? 1 : 0)), 0);
+    return { chapter, matches, points };
+  }).sort((a, b) => b.points - a.points);
+  const best = ranked[0];
+  const runner = ranked[1];
+  const ambiguous = best.points === 0 || best.points - runner.points < 1;
   return {
-    difficulty: "medium",
-    bloom: "apply",
-    rationale: `Stem "${phrase}" is a single-step application.`,
+    chapter: best.points ? best.chapter : "Unclassified",
+    concepts: best.matches.slice(0, 4),
+    alternatives: ranked.filter((item) => item.points > 0).slice(0, 3),
+    ambiguous,
+    evidenceScore: best.points ? Math.min(0.8, Math.round((0.3 + best.points * 0.045 + (ambiguous ? 0 : 0.1)) * 100) / 100) : 0,
   };
 }
 
-function detectMath(stem: string): { latex: string[]; has_equation: boolean } {
-  const latex: string[] = [];
-  // detect common physics formulas mentioned in text
-  const formulas: [RegExp, string][] = [
-    [/kinetic energy/i, "KE = \\frac{1}{2}mv^2"],
-    [/potential energy/i, "PE = mgh"],
-    [/ohm/i, "V = IR"],
-    [/capacit/i, "Q = CV"],
-    [/coulomb|electric field/i, "E = \\frac{kq}{r^2}"],
-    [/focal length|lens|mirror/i, "\\frac{1}{v} - \\frac{1}{u} = \\frac{1}{f}"],
-    [/pendulum/i, "T = 2\\pi\\sqrt{\\frac{L}{g}}"],
-    [/friction/i, "f = \\mu N"],
-    [/resistance.*length|resistivity/i, "R = \\rho\\frac{L}{A}"],
-    [/gravitation|orbital|satellite/i, "T^2 \\propto R^3"],
-    [/half-life|radioact/i, "N = N_0(\\frac{1}{2})^n"],
-    [/de broglie/i, "\\lambda = \\frac{h}{mv}"],
-    [/inductance/i, "\\varepsilon = -L\\frac{di}{dt}"],
-    [/fringe|double slit/i, "\\beta = \\frac{\\lambda D}{d}"],
-    [/carnot|efficiency/i, "\\eta = 1 - \\frac{T_2}{T_1}"],
-    [/incline|inclin/i, "a = g\\sin\\theta"],
-    [/rolling/i, "a = \\frac{g\\sin\\theta}{1 + I/(MR^2)}"],
-    [/power factor|lcr|resonance/i, "\\cos\\phi = \\frac{R}{Z}"],
-  ];
-  for (const [re, tex] of formulas) {
-    if (re.test(stem)) latex.push(tex);
-  }
-  // also detect explicit math in the stem
-  const hasEq = /[=^√∑∫]|\\[a-zA-Z]+/.test(stem) || latex.length > 0;
-  return { latex, has_equation: hasEq };
+export function heuristicTaxonomy(stem: string, _sampleIdx = 0): TaxonomyOut {
+  const evidence = taxonomyEvidence(stem);
+  return { chapter: evidence.chapter, concepts: evidence.concepts };
 }
 
-function detectLanguage(stem: string): { language: "en" | "hi" | "hinglish"; code_mix_ratio: number } {
-  // Hindi/Hinglish markers in latin script
-  const hindiWords = /\b(hai|ka|ki|ke|ko|se|me|par|aur|ya|nahi|ho|gaya|kya|jab|tab|agar|toh|kar|raha|rahe|hua|hui|wal|nya|liya|diya|gaya|hogi|hoga|kuch|bahut|thodi|matlab|kaise|kyu|kyon)\b/gi;
-  const matches = stem.match(hindiWords);
-  const hindiCount = matches ? matches.length : 0;
-  const wordCount = stem.split(/\s+/).filter(Boolean).length || 1;
-  const ratio = Math.min(1, hindiCount / wordCount);
-  if (ratio > 0.25) return { language: "hinglish", code_mix_ratio: Math.round(ratio * 100) / 100 };
-  if (ratio > 0.6) return { language: "hi", code_mix_ratio: Math.round(ratio * 100) / 100 };
-  return { language: "en", code_mix_ratio: 0 };
-}
-
-export function heuristicTaxonomy(stem: string, sampleIdx = 0): TaxonomyOut {
-  const chapter = detectChapter(stem);
-  const concepts = detectConcepts(stem, chapter);
-  // sample 0 and 1 agree; sample 2 occasionally disagrees to simulate
-  // self-consistency noise (drives the disagreement panel + human routing)
-  if (sampleIdx === 2 && Math.random() < 0.25) {
-    // pick a different plausible chapter
-    const altChapters = CHAPTERS.filter((c) => c !== chapter);
-    return { chapter: altChapters[Math.floor(Math.random() * altChapters.length)], concepts };
-  }
-  return { chapter, concepts };
-}
-
-export function heuristicDifficulty(stem: string, sampleIdx = 0): DifficultyOut {
-  const d = detectDifficulty(stem);
-  // sample 2 occasionally flips difficulty to simulate disagreement
-  if (sampleIdx === 2 && Math.random() < 0.2) {
-    const flips = { easy: "medium", medium: "hard", hard: "medium" } as const;
-    return {
-      difficulty: flips[d.difficulty],
-      bloom: d.bloom,
-      difficulty_rationale: d.rationale,
-    };
-  }
+export function heuristicDifficulty(stem: string, _sampleIdx = 0): DifficultyOut {
+  const phrase = stem.trim().slice(0, 90);
+  const recall = /\b(define|what is|state the|unit of|dimensional formula)\b/i.test(stem);
+  const complex = /\b(derive|prove|compare|combined|simultaneous|multi.step)\b/i.test(stem);
   return {
-    difficulty: d.difficulty,
-    bloom: d.bloom,
-    difficulty_rationale: d.rationale,
+    difficulty: recall ? "easy" : complex ? "hard" : "medium",
+    bloom: recall ? "remember" : complex ? "analyze" : "apply",
+    difficulty_rationale: 'Rule-based estimate from "' + phrase + '". A reviewer should confirm the required reasoning steps.',
   };
 }
 
 export function heuristicMath(stem: string): MathOut {
-  return detectMath(stem);
+  const latex = [...stem.matchAll(/\$\$?([^$]+)\$\$?|\\\(([\s\S]+?)\\\)|\\\[([\s\S]+?)\\\]/g)]
+    .map((match) => (match[1] ?? match[2] ?? match[3]).trim());
+  return { latex, has_equation: latex.length > 0 || /[=∑∫√^²³]/.test(stem) };
 }
 
 export function heuristicLanguage(stem: string): LanguageOut {
-  return detectLanguage(stem);
+  const words = stem.trim().split(/\s+/).filter(Boolean);
+  const dev = words.filter((word) => /[\u0900-\u097f]/.test(word)).length;
+  if (dev) {
+    const ratio = dev / (words.length || 1);
+    return { language: ratio >= 0.6 ? "hi" : "hinglish", code_mix_ratio: Math.round(ratio * 100) / 100 };
+  }
+  const hindi = words.filter((word) => /^(hai|hoga|hogi|kya|kaise|kyon|nahi|aur|agar|jab|tab|raha|rahe)$/i.test(word)).length;
+  const ratio = hindi / (words.length || 1);
+  return { language: ratio > 0.08 ? "hinglish" : "en", code_mix_ratio: ratio > 0.08 ? Math.round(ratio * 100) / 100 : 0 };
 }

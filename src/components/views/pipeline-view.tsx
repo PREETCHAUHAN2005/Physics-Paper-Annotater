@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Job, PipelineEvent } from "@/lib/types";
-import { api } from "@/lib/api";
+import { api, DEMO_MODE } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,10 +41,10 @@ type UnitState = {
 type LogEntry = { ts: number; type: string; text: string; tone: "info" | "ok" | "warn" | "err" };
 
 const AGENT_NODES = [
-  { id: "taxonomy", label: "Taxonomy", sub: "×3 · k=3", icon: Layers, tone: "emerald" as const },
-  { id: "difficulty", label: "Difficulty", sub: "×3 · k=3", icon: Gauge, tone: "teal" as const },
-  { id: "math", label: "Math", sub: "×1 · LaTeX", icon: Cpu, tone: "violet" as const },
-  { id: "language", label: "Language", sub: "×1 · hi/en", icon: Activity, tone: "amber" as const },
+  { id: "taxonomy", label: "Taxonomy", sub: DEMO_MODE ? "keyword evidence" : "×3 · k=3", icon: Layers, tone: "emerald" as const },
+  { id: "difficulty", label: "Difficulty", sub: DEMO_MODE ? "rule estimate" : "×3 · k=3", icon: Gauge, tone: "teal" as const },
+  { id: "math", label: "Math", sub: DEMO_MODE ? "source expressions" : "×1 · LaTeX", icon: Cpu, tone: "violet" as const },
+  { id: "language", label: "Language", sub: DEMO_MODE ? "script detection" : "×1 · hi/en", icon: Activity, tone: "amber" as const },
 ];
 
 export function PipelineView({
@@ -78,19 +78,7 @@ export function PipelineView({
     setRunning(job.status === "labeling" || job.status === "extracting");
     setTotal(job.unitCount);
 
-    const es = new EventSource(`/api/jobs/${job.id}/stream`);
-    es.onmessage = (e) => {
-      try {
-        const evt: PipelineEvent = JSON.parse(e.data);
-        handleEvent(evt);
-      } catch {
-        /* ignore */
-      }
-    };
-    es.onerror = () => {
-      /* will auto-reconnect */
-    };
-    return () => es.close();
+    return api.subscribePipeline(job.id, handleEvent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
 
@@ -101,6 +89,7 @@ export function PipelineView({
 
     switch (evt.type) {
       case "snapshot":
+        setDone((d.units as UnitState[]).filter((unit) => unit.route !== null).length);
         setUnits(
           (d.units as UnitState[]).map((u) => ({
             id: u.id,
@@ -205,7 +194,7 @@ export function PipelineView({
     setShowConfirm(false);
     try {
       await api.runPipeline(job.id);
-      toast.success("Pipeline started");
+      toast.success("Annotation completed — open Review Queue.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to start");
       setRunning(false);
@@ -238,7 +227,7 @@ export function PipelineView({
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Live Pipeline</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Fan-out → merge → critic → confidence gate. SSE-streamed, per-unit.
+            {DEMO_MODE ? "Rule stages → validation → human review. Progress comes from actual completed work." : "Fan-out → merge → critic → confidence gate. SSE-streamed, per-unit."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -282,7 +271,7 @@ export function PipelineView({
             <Cpu className="h-4 w-4 text-primary" /> Agent fan-out
           </CardTitle>
           <CardDescription>
-            Each unit spawns 8 parallel agent calls (taxonomy×3, difficulty×3, math×1, language×1) + 1 critic.
+            {DEMO_MODE ? "Each question runs five deterministic stages. No LLM sampling or inter-rater agreement is measured." : "Each unit spawns 8 parallel agent calls (taxonomy×3, difficulty×3, math×1, language×1) + 1 critic."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -325,7 +314,7 @@ export function PipelineView({
             {/* Critic */}
             <DiagramNode
               icon={ShieldCheck}
-              label="Critic"
+              label={DEMO_MODE ? "Validation" : "Critic"}
               sub="rubric gate"
               tone="amber"
               active={running}
@@ -338,7 +327,7 @@ export function PipelineView({
             <DiagramNode
               icon={GitBranch}
               label="Route"
-              sub="≥0.85 → auto"
+              sub={DEMO_MODE ? "review required" : "≥0.85 → auto"}
               tone="emerald"
               active={running}
               count={done}
@@ -454,20 +443,20 @@ export function PipelineView({
                   <span className="font-mono font-bold">{job.unitCount}</span>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <span className="text-muted-foreground">Agent calls per unit</span>
-                  <span className="font-mono font-bold">8 + 1 critic</span>
+                  <span className="text-muted-foreground">{DEMO_MODE ? "Rule stages per question" : "Agent calls per unit"}</span>
+                  <span className="font-mono font-bold">{DEMO_MODE ? "5 (local)" : "8 + 1 critic"}</span>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <span className="text-muted-foreground">Total agent calls</span>
-                  <span className="font-mono font-bold">{job.unitCount * 9}</span>
+                  <span className="text-muted-foreground">{DEMO_MODE ? "External AI calls" : "Total agent calls"}</span>
+                  <span className="font-mono font-bold">{DEMO_MODE ? 0 : job.unitCount * 9}</span>
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-primary/5 border border-primary/20">
                   <span className="text-primary">Est. time</span>
-                  <span className="font-mono font-bold text-primary">~{Math.ceil(job.unitCount * 0.5)} min</span>
+                  <span className="font-mono font-bold text-primary">{DEMO_MODE ? "Depends on device" : "~" + Math.ceil(job.unitCount * 0.5) + " min"}</span>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground leading-relaxed">
-                The pipeline will fan out 8 parallel agents per unit, merge results, run the critic, and route based on confidence (≥0.85 → auto, &lt;0.85 → human).
+                {DEMO_MODE ? "This runs deterministic topic, difficulty, math, language, and validation rules on your device. All suggestions go to human review." : "The pipeline fans out agents, merges results, runs the critic, and routes by confidence."}
               </div>
               <div className="flex gap-2 justify-end pt-2 border-t border-border/60">
                 <Button variant="ghost" size="sm" onClick={() => setShowConfirm(false)}>

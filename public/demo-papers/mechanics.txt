@@ -1,0 +1,5 @@
+Physics demo — Mechanics
+1. A block of mass 2 kg rests on a rough surface. The coefficient of friction is 0.4. Find the limiting friction.
+(a) 2 N (b) 4 N (c) 8 N (d) 16 N
+2. A satellite moves in a circular orbital path. How does its orbital period depend on the radius?
+3. A simple pendulum has a time period of 2 seconds. What happens when its length is increased fourfold?

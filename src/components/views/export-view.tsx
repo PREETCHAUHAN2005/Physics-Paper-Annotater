@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Job, FinalRecord } from "@/lib/types";
-import { api } from "@/lib/api";
+import { api, DEMO_MODE } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, FileJson, FileText, FileSpreadsheet, Loader2, CheckCircle2, Filter, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { isExportable } from "@/lib/exports";
 import { cn } from "@/lib/utils";
 
 export function ExportView({ job }: { job: Job }) {
@@ -24,17 +25,16 @@ export function ExportView({ job }: { job: Job }) {
       .finally(() => setLoading(false));
   }, [job.id]);
 
-  const eligible = finals.filter(
-    (f) => f.route === "auto" || f.reviewerAction === "accept" || f.reviewerAction === "edit"
-  );
-  const excluded = finals.filter(
-    (f) => !(f.route === "auto" || f.reviewerAction === "accept" || f.reviewerAction === "edit")
-  );
+  const eligible = finals.filter(isExportable);
+  const excluded = finals.filter((record) => !isExportable(record));
+  const download = async (format: "json" | "jsonl" | "csv") => {
+    try { await api.downloadExport(job.id, format); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Export failed"); }
+  };
 
   const copyToClipboard = async () => {
-    const jsonl = eligible
-      .map((f) => JSON.stringify({ ...f.payload, reviewed_by: f.reviewedBy, reviewer_action: f.reviewerAction ?? "auto" }))
-      .join("\n");
+    const jsonl = DEMO_MODE ? (await import("@/lib/exports")).exportRecords(eligible, "jsonl")
+      : eligible.map((record) => JSON.stringify({ ...record.payload, reviewed_by: record.reviewedBy, reviewer_action: record.reviewerAction })).join("\n");
     try {
       await navigator.clipboard.writeText(jsonl);
       setCopied(true);
@@ -50,8 +50,7 @@ export function ExportView({ job }: { job: Job }) {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Export</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          ML-ready dataset. Only rows where <code className="text-primary text-xs">route=&apos;auto&apos;</code> OR{" "}
-          <code className="text-primary text-xs">reviewer_action IN (&apos;accept&apos;,&apos;edit&apos;)</code>.
+          Download approved annotations. Rejected, unreviewed, and test questions are excluded.
         </p>
       </div>
 
@@ -81,21 +80,15 @@ export function ExportView({ job }: { job: Job }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button asChild className="gap-2">
-          <a href={api.exportUrl(job.id, "jsonl")} download>
+        <Button className="gap-2" onClick={() => download("jsonl")} disabled={!eligible.length}>
             <FileText className="h-4 w-4" /> Download JSONL
-          </a>
-        </Button>
-        <Button asChild variant="outline" className="gap-2">
-          <a href={api.exportUrl(job.id, "json")} download>
+          </Button>
+        <Button variant="outline" className="gap-2" onClick={() => download("json")} disabled={!eligible.length}>
             <FileJson className="h-4 w-4" /> Download JSON
-          </a>
-        </Button>
-        <Button asChild variant="outline" className="gap-2">
-          <a href={api.exportUrl(job.id, "csv")} download>
+          </Button>
+        <Button variant="outline" className="gap-2" onClick={() => download("csv")} disabled={!eligible.length}>
             <FileSpreadsheet className="h-4 w-4" /> Download CSV
-          </a>
-        </Button>
+          </Button>
       </div>
 
       {/* Schema preview */}

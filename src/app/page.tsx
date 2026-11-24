@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "@/lib/api";
+import { api, DEMO_MODE } from "@/lib/api";
 import type { Job } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { CommandPalette, KeyboardShortcutsHelp } from "@/components/command-palette";
@@ -28,7 +28,7 @@ const ExportView = dynamic(() => import("@/components/views/export-view").then((
 export type ViewKey = "overview" | "jobs" | "pipeline" | "units" | "review" | "honeypot" | "quality" | "compare" | "insights" | "taxonomy" | "search" | "activity" | "architecture" | "export";
 
 export default function Home() {
-  const [view, setView] = useState<ViewKey>("overview");
+  const [view, setView] = useState<ViewKey>("jobs");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [loadingJobs, setLoadingJobs] = useState(false);
@@ -63,7 +63,7 @@ export default function Home() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable || Boolean(target.closest('[role="combobox"], [role="listbox"]'));
       if (isInput) return;
 
       // Cmd/Ctrl+K → command palette
@@ -210,7 +210,7 @@ export default function Home() {
     </AppShell>
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onViewChange={setView} />
     <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
-    <OnboardingTour />
+    {!DEMO_MODE && <OnboardingTour />}
     </>
   );
 }

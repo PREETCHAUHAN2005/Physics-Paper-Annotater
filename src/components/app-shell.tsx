@@ -1,5 +1,8 @@
 "use client";
 
+import { DemoNotice } from "@/components/demo-notice";
+import { DEMO_MODE } from "@/lib/api";
+
 import type { Job } from "@/lib/types";
 import type { ViewKey } from "@/app/page";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +36,14 @@ const NAV: { key: ViewKey; label: string; icon: React.ComponentType<{ className?
   { key: "pipeline", label: "Live Pipeline", icon: Play },
   { key: "units", label: "Annotated Units", icon: TableProperties },
   { key: "review", label: "Review Queue", icon: GitBranch },
-  { key: "honeypot", label: "Honeypot Inspector", icon: FlaskConical },
+  { key: "honeypot", label: DEMO_MODE ? "Validation" : "Honeypot Inspector", icon: FlaskConical },
   { key: "quality", label: "Quality", icon: Gauge },
   { key: "compare", label: "Compare Jobs", icon: GitCompare },
   { key: "insights", label: "Insights", icon: TrendingUp },
   { key: "taxonomy", label: "Taxonomy", icon: BookOpen },
   { key: "search", label: "Global Search", icon: Search },
   { key: "activity", label: "Activity", icon: Activity },
-  { key: "architecture", label: "Architecture", icon: Network },
+  { key: "architecture", label: DEMO_MODE ? "Reference Architecture" : "Architecture", icon: Network },
   { key: "export", label: "Export", icon: Download },
 ];
 
@@ -87,7 +90,7 @@ export function AppShell({
                 Annotate<span className="text-gradient-emerald">IQ</span>
               </span>
               <span className="text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">
-                Multi-agent JEE Physics annotation
+                {DEMO_MODE ? "Physics questions · rules + review" : "Multi-agent JEE Physics annotation"}
               </span>
             </div>
           </div>
@@ -128,6 +131,7 @@ export function AppShell({
                 return (
                   <button
                     key={item.key}
+                    aria-label={item.label}
                     onClick={() => {
                       onViewChange(item.key);
                       setMobileOpen(false);
@@ -218,7 +222,7 @@ export function AppShell({
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</div>
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-6"><DemoNotice />{children}</div>
         </main>
       </div>
 
@@ -227,14 +231,14 @@ export function AppShell({
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Atom className="h-3.5 w-3.5 text-primary" />
-            <span>AnnotateIQ — k=3 self-consistency · critic-gated · honeypot-verified</span>
+            <span>{DEMO_MODE ? "AnnotateIQ — physics question annotation · reviewed exports" : "AnnotateIQ — k=3 self-consistency · critic-gated · honeypot-verified"}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-mono">threshold ≥ 0.85</span>
+            <span className="font-mono">{DEMO_MODE ? "rules-v1" : "threshold ≥ 0.85"}</span>
             <span>·</span>
-            <span className="font-mono">MAX_ATTEMPTS = 2</span>
+            <span className="font-mono">{DEMO_MODE ? "Saved in this browser" : "MAX_ATTEMPTS = 2"}</span>
             <span>·</span>
-            <span className="font-mono">K = 3</span>
+            <span className="font-mono">{DEMO_MODE ? "29 topics" : "K = 3"}</span>
             <span>·</span>
             <kbd className="font-mono px-1.5 py-0.5 rounded bg-muted border border-border text-[10px]">⌘K</kbd>
             <span className="hidden sm:inline">command palette</span>

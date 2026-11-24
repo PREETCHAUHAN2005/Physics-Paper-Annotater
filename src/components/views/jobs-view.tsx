@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Job } from "@/lib/types";
+import { PaperUpload } from "@/components/paper-upload";
 import { api } from "@/lib/api";
 import { SAMPLE_PAPERS } from "@/lib/data/sample-papers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -65,13 +66,14 @@ export function JobsView({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Jobs & Upload</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Create a job from a curated JEE Physics paper or paste raw text. Each job is segmented into
-          units and run through the multi-agent pipeline.
+          Import your own physics papers, paste numbered questions, or try the built-in examples.
+          All source questions are preserved for annotation and review.
         </p>
       </div>
 
-      <Tabs defaultValue="sample">
+      <Tabs defaultValue="upload">
         <TabsList>
+          <TabsTrigger value="upload" className="gap-2"><FileUp className="h-4 w-4" /> Upload papers</TabsTrigger>
           <TabsTrigger value="sample" className="gap-2">
             <FileText className="h-4 w-4" /> Sample papers
           </TabsTrigger>
@@ -80,7 +82,10 @@ export function JobsView({
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="upload" className="mt-4"><PaperUpload onJobCreated={onJobCreated} /></TabsContent>
+
         <TabsContent value="sample" className="mt-4">
+          <p className="mb-4 text-xs text-muted-foreground">Illustrative pre-segmented questions. To demonstrate actual document extraction, use Upload papers with your own file.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SAMPLE_PAPERS.map((p) => {
               const Icon = p.kind === "clean" ? FileText : p.kind === "scanned" ? ScanLine : ImageIcon;
@@ -192,7 +197,7 @@ function PasteForm({ onJobCreated }: { onJobCreated: (job: Job) => void }) {
             className="min-h-[200px] font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Segmenter: regex on <code className="text-primary">^\s*(\d{"{1,3}"})[.)]\s</code>
+            Start questions on new lines with Q1., Question 1:, 1., or 1). Numbering may restart in a new section.
           </p>
         </div>
         <Button onClick={submit} disabled={loading} className="gap-2">

@@ -13,6 +13,8 @@ import type {
   Unit,
 } from "@/lib/types";
 
+export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE !== "0";
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -21,6 +23,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * frontend resilient by retrying transient failures instead of crashing.
  */
 async function jfetch<T>(url: string, init?: RequestInit, retries = 3): Promise<T> {
+  if (DEMO_MODE) {
+    const { demoRequest } = await import("@/lib/demo-engine");
+    return demoRequest<T>(url, init);
+  }
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -49,8 +55,44 @@ async function jfetch<T>(url: string, init?: RequestInit, retries = 3): Promise<
 }
 
 export const api = {
+  getHealth: () => jfetch<{ status: "healthy" | "degraded" | "down"; jobs: number; activeJobs: number; totalUnits: number; pendingUnits: number; labeledUnits: number; reviewedUnits: number; agentsAvailable: number; dbConnected: boolean }>("/api/health"),
+  subscribePipeline: (id: string, onEvent: (event: import("@/lib/types").PipelineEvent) => void): (() => void) => {
+    let disposed = false;
+    let cleanup = () => {};
+    if (DEMO_MODE) {
+      void import("@/lib/demo-engine").then(({ subscribeDemo }) => {
+        if (!disposed) cleanup = subscribeDemo(id, onEvent);
+      });
+    } else {
+      const source = new EventSource("/api/jobs/" + id + "/stream");
+      source.onmessage = (event) => { try { onEvent(JSON.parse(event.data)); } catch { /* invalid events are ignored */ } };
+      cleanup = () => source.close();
+    }
+    return () => { disposed = true; cleanup(); };
+  },
+  downloadExport: async (id: string, format: "json" | "jsonl" | "csv") => {
+    let contents: string;
+    if (DEMO_MODE) {
+      const [{ finals }, { units }, { job }, { exportRecords }] = await Promise.all([api.getFinals(id), api.getUnits(id), api.getJob(id), import("@/lib/exports")]);
+      const sources = Object.fromEntries(units.map((unit) => [unit.id, { filename: job.filename, page: unit.page, label: unit.sourceLabel }]));
+      contents = exportRecords(finals, format, sources);
+    } else {
+      const response = await fetch(api.exportUrl(id, format));
+      if (!response.ok) throw new Error("Export failed: " + response.status);
+      contents = await response.text();
+    }
+    const mime = format === "csv" ? "text/csv" : format === "jsonl" ? "application/x-ndjson" : "application/json";
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(new Blob([contents], { type: mime + ";charset=utf-8" }));
+    link.href = url;
+    link.download = "annotateiq-" + id.slice(0, 8) + "." + format;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   listJobs: () => jfetch<{ jobs: Job[] }>("/api/jobs"),
-  createJob: (body: { mode: "sample" | "paste"; paperId?: string; text?: string; filename?: string }) =>
+  createJob: (body: { mode: "sample" | "paste" | "file"; paperId?: string; text?: string; filename?: string }) =>
     jfetch<{ job: Job }>("/api/jobs", { method: "POST", body: JSON.stringify(body) }),
   getJob: (id: string) => jfetch<{ job: Job }>(`/api/jobs/${id}`),
   getUnits: (id: string) => jfetch<{ units: (Unit & { final?: { route: string; confidence: number; agreement: number; reviewerAction: string | null } | null })[] }>(`/api/jobs/${id}/units`),

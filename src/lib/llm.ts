@@ -61,7 +61,7 @@ export async function chat(
           ],
           temperature: opts.temperature,
           thinking: { type: opts.thinking ? "enabled" : "disabled" },
-        } as Record<string, unknown>);
+        });
         const content = completion.choices[0]?.message?.content ?? "";
         return { content, latencyMs: Date.now() - start };
       } catch (e) {

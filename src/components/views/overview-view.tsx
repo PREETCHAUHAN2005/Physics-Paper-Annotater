@@ -1,4 +1,5 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
 
 import type { Job } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -44,15 +45,13 @@ export function OverviewView({
           <div className="flex flex-col lg:flex-row items-start gap-6">
             <div className="flex-1">
               <Badge variant="outline" className="mb-3 gap-1.5 border-primary/30 text-primary">
-                <Atom className="h-3 w-3" /> JEE Physics · Multi-agent
+                <Atom className="h-3 w-3" /> {DEMO_MODE ? "Physics · annotation workbench" : "JEE Physics · Multi-agent"}
               </Badge>
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                Annotate questions at <span className="text-gradient-emerald">production grade</span>
+                Annotate questions with <span className="text-gradient-emerald">{DEMO_MODE ? "human review" : "specialist agents"}</span>
               </h1>
               <p className="mt-3 text-muted-foreground max-w-2xl">
-                Four specialist agents label each unit in parallel. A critic validates against a rubric.
-                Low-confidence units route to a human review queue. Every decision is inspectable —
-                down to which agent disagreed.
+                {DEMO_MODE ? "Import your own physics papers, check the extracted questions, and review topic and difficulty suggestions. Export only the annotations you approve. Everything is saved in this browser." : "Four specialist agents label questions in parallel, then a critic validates the annotation and routes it for review."}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button onClick={onGoToJobs} className="gap-2">
@@ -64,7 +63,7 @@ export function OverviewView({
               </div>
               {/* Feature pills */}
               <div className="mt-4 flex flex-wrap gap-2">
-                {["k=3 self-consistency", "critic-gated", "honeypot-verified", "weakest-link scoring"].map((pill) => (
+                {(DEMO_MODE ? ["29 physics topics", "editable extraction", "source preserved", "reviewed exports"] : ["k=3 self-consistency", "critic-gated", "honeypot-verified", "weakest-link scoring"]).map((pill) => (
                   <span key={pill} className="text-[10px] font-mono px-2 py-1 rounded-full bg-primary/5 border border-primary/20 text-primary/80">
                     {pill}
                   </span>
@@ -80,10 +79,10 @@ export function OverviewView({
                 </div>
                 {[
                   { label: "Ingest & segment", icon: Layers, tone: "text-muted-foreground" },
-                  { label: "Fan-out · 8 agents/unit", icon: Cpu, tone: "text-primary" },
-                  { label: "Merge · weakest-link score", icon: GitBranch, tone: "text-foreground/80" },
-                  { label: "Critic · rubric gate", icon: ShieldCheck, tone: "text-foreground/60" },
-                  { label: "Confidence ≥ 0.85 → auto", icon: Gauge, tone: "text-foreground" },
+                  { label: DEMO_MODE ? "Topic, difficulty, math, and language rules" : "Fan-out · 8 agents/unit", icon: Cpu, tone: "text-primary" },
+                  { label: DEMO_MODE ? "Collect source-grounded suggestions" : "Merge · weakest-link score", icon: GitBranch, tone: "text-foreground/80" },
+                  { label: DEMO_MODE ? "Flag missing or ambiguous evidence" : "Critic · rubric gate", icon: ShieldCheck, tone: "text-foreground/60" },
+                  { label: DEMO_MODE ? "Human review → approved export" : "Confidence ≥ 0.85 → auto", icon: Gauge, tone: "text-foreground" },
                 ].map((step, i) => {
                   const Icon = step.icon;
                   return (

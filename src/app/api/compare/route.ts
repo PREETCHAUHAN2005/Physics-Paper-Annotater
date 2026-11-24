@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { JobComparison } from "@/lib/types";
 import { db } from "@/lib/db";
 import { fleissKappa, kappaVerdict } from "@/lib/scoring";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: NextRequest) {
   const jobs = await db.job.findMany({ orderBy: { createdAt: "desc" } });
 
-  const comparison = [];
+  const comparison: JobComparison[] = [];
   for (const job of jobs) {
     const finals = await db.final.findMany({ where: { jobId: job.id } });
     const units = await db.unit.findMany({ where: { jobId: job.id } });

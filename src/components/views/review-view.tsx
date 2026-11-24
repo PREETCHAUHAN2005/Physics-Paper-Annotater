@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Job, ReviewItem } from "@/lib/types";
+import { CHAPTERS } from "@/lib/schemas";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,12 +130,14 @@ export function ReviewView({ job }: { job: Job }) {
   // keyboard shortcuts: A accept, E edit-mode, R reject, J/K navigate
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const target = e.target as HTMLElement;
+      if (submitting || e.metaKey || e.ctrlKey || e.altKey || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable || target.closest('[role="combobox"], [role="listbox"], [role="dialog"]')) return;
       const k = e.key.toLowerCase();
       if (k === "a") submit("accept");
       else if (k === "r") submit("reject");
       else if (k === "e") {
-        if (!editMode) {
+        if (editMode) submit("edit");
+        else {
           setEdited(current?.payload ?? null);
           setEditMode(true);
         }
@@ -144,7 +147,7 @@ export function ReviewView({ job }: { job: Job }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, editMode, items.length]);
+  }, [current, editMode, items.length, submitting, edited]);
 
   const reviewedCount = items.filter((i) => i.reviewerAction).length;
 
@@ -154,7 +157,7 @@ export function ReviewView({ job }: { job: Job }) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Low-confidence units (conf &lt; 0.85) routed here. Keys: <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">A</kbd> accept ·{" "}
+            Review the proposed topic, concepts, and difficulty. Rule scores describe keyword evidence. Keys: <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">A</kbd> accept ·{" "}
             <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">E</kbd> edit ·{" "}
             <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">R</kbd> reject ·{" "}
             <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">J</kbd>/<kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">K</kbd> nav
@@ -243,7 +246,7 @@ export function ReviewView({ job }: { job: Job }) {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                        <span>conf {it.confidence.toFixed(2)}</span>
+                        <span>evidence {it.confidence.toFixed(2)}</span>
                         <span>·</span>
                         <span className={cn(it.payload.difficulty)}>{it.payload.difficulty}</span>
                       </div>
@@ -286,7 +289,7 @@ export function ReviewView({ job }: { job: Job }) {
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Bot className="h-4 w-4 text-primary" /> Question & agent drafts
                     </CardTitle>
-                    <CardDescription>See exactly where agents disagreed.</CardDescription>
+                    <CardDescription>Inspect the source and the evidence used by each annotation stage.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -496,7 +499,7 @@ function AnnotationForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Chapter</Label>
-          <Input value={payload.chapter} readOnly={!editable} onChange={(e) => set({ chapter: e.target.value })} className="text-sm" />
+          <select aria-label="Chapter" value={payload.chapter} disabled={!editable} onChange={(e) => set({ chapter: e.target.value })} className="w-full rounded-md border bg-background p-2 text-sm"><option value="Unclassified" disabled>Choose a supported chapter</option>{CHAPTERS.map((chapter) => <option key={chapter} value={chapter}>{chapter}</option>)}</select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Difficulty</Label>

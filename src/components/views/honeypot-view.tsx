@@ -1,4 +1,6 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
+import { DemoValidation } from "@/components/demo-panels";
 
 import { useEffect, useState } from "react";
 import type { HoneypotResult, Job } from "@/lib/types";
@@ -21,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function HoneypotView({ job }: { job: Job }) {
+function ServerHoneypotView({ job }: { job: Job }) {
   const [items, setItems] = useState<HoneypotResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<HoneypotResult | null>(null);
@@ -313,4 +315,8 @@ function SummaryCard({
       </CardContent>
     </Card>
   );
+}
+
+export function HoneypotView({ job }: { job: Job }) {
+  return DEMO_MODE ? <DemoValidation /> : <ServerHoneypotView job={job} />;
 }

@@ -84,8 +84,7 @@ export async function processUnit(jobId: string, unitId: string): Promise<void> 
   const tasks: Promise<void>[] = [];
   const taxonomySamples: (TaxonomyOut | null)[] = [];
   const difficultySamples: (DifficultyOut | null)[] = [];
-  let mathOut: MathOut | null = null;
-  let languageOut: LanguageOut | null = null;
+  const auxiliary: { math: MathOut | null; language: LanguageOut | null } = { math: null, language: null };
 
   const safe = async <T>(
     agent: string,
@@ -135,10 +134,10 @@ export async function processUnit(jobId: string, unitId: string): Promise<void> 
     );
   }
   tasks.push(
-    safe("math", 0, SKIP_LLM ? async () => ({ value: null, raw: "", latencyMs: 0 }) : () => runMath(input), () => fallbackMath(input.stem), (v) => { mathOut = v; })
+    safe("math", 0, SKIP_LLM ? async () => ({ value: null, raw: "", latencyMs: 0 }) : () => runMath(input), () => fallbackMath(input.stem), (v) => { auxiliary.math = v; })
   );
   tasks.push(
-    safe("language", 0, SKIP_LLM ? async () => ({ value: null, raw: "", latencyMs: 0 }) : () => runLanguage(input), () => fallbackLanguage(input.stem), (v) => { languageOut = v; })
+    safe("language", 0, SKIP_LLM ? async () => ({ value: null, raw: "", latencyMs: 0 }) : () => runLanguage(input), () => fallbackLanguage(input.stem), (v) => { auxiliary.language = v; })
   );
 
   await Promise.all(tasks);
@@ -173,7 +172,7 @@ export async function processUnit(jobId: string, unitId: string): Promise<void> 
   const mergedForCritic = {
     chapter: mergedChapter,
     concepts,
-    latex: mathOut?.latex ?? [],
+    latex: auxiliary.math?.latex ?? [],
     difficulty_rationale: mergedDiff?.difficulty_rationale ?? "",
   };
   bus.publish(jobId, "agent:start", { unitId, agent: "critic", sampleIdx: 0 });
@@ -309,10 +308,10 @@ export async function processUnit(jobId: string, unitId: string): Promise<void> 
     difficulty: mergedDifficulty,
     bloom: mergedDiff?.bloom ?? "understand",
     difficulty_rationale: mergedDiff?.difficulty_rationale ?? "",
-    latex: mathOut?.latex ?? [],
-    has_equation: mathOut?.has_equation ?? false,
-    language: languageOut?.language ?? "en",
-    code_mix_ratio: languageOut?.code_mix_ratio ?? 0,
+    latex: auxiliary.math?.latex ?? [],
+    has_equation: auxiliary.math?.has_equation ?? false,
+    language: auxiliary.language?.language ?? "en",
+    code_mix_ratio: auxiliary.language?.code_mix_ratio ?? 0,
     confidence,
     agreement,
     route,

@@ -1,0 +1,4 @@
+Physics demo — Modern Physics
+1. Explain the photoelectric effect and define the work function of a metal.
+2. A radioactive sample has a half-life of 4 hours. What fraction remains after 8 hours?
+3. Explain how doping changes the conductivity of a semiconductor diode.

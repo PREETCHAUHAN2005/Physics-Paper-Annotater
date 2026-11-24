@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const TaxonomyOut = z.object({
   chapter: z.string(),
-  concepts: z.array(z.string()).min(1).max(4),
+  concepts: z.array(z.string()).max(4),
 });
 export type TaxonomyOut = z.infer<typeof TaxonomyOut>;
 

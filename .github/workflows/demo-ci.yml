@@ -24,8 +24,6 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
-      - name: Record generated dependency lock for review
-        run: node -e "require('node:fs').readFileSync('package-lock.json').toString('base64').match(/.{1,6000}/g).forEach((chunk,i) => console.log('ANNOTATEIQ_LOCK_' + i + ':' + chunk))"
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint

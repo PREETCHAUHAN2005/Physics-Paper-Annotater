@@ -4,6 +4,9 @@ on:
     branches: ["codex/**"]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: physics-demo-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -22,7 +25,7 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - name: Record generated dependency lock for review
-        run: node -e "console.log('ANNOTATEIQ_LOCK:' + require('node:fs').readFileSync('package-lock.json').toString('base64'))"
+        run: node -e "require('node:fs').readFileSync('package-lock.json').toString('base64').match(/.{1,6000}/g).forEach((chunk,i) => console.log('ANNOTATEIQ_LOCK_' + i + ':' + chunk))"
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint

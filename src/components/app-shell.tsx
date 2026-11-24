@@ -90,7 +90,7 @@ export function AppShell({
                 Annotate<span className="text-gradient-emerald">IQ</span>
               </span>
               <span className="text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">
-                Multi-agent JEE Physics annotation
+                {DEMO_MODE ? "Physics questions · rules + review" : "Multi-agent JEE Physics annotation"}
               </span>
             </div>
           </div>

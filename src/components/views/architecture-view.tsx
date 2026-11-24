@@ -1,4 +1,5 @@
 "use client";
+import { DEMO_MODE } from "@/lib/api";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -117,7 +118,7 @@ const toneClasses = {
   rose: { border: "border-rose-500/40", text: "text-rose-400", bg: "bg-rose-500/5", glow: "glow-rose" },
 };
 
-export function ArchitectureView() {
+function ReferenceArchitectureView() {
   const [selected, setSelected] = useState<AgentInfo | null>(null);
 
   return (
@@ -352,4 +353,8 @@ function FlowArrow() {
       <ArrowDown className="lg:hidden h-5 w-5 text-muted-foreground" />
     </div>
   );
+}
+
+export function ArchitectureView() {
+  return <><p className="mb-5 rounded-lg border p-4 text-sm text-muted-foreground">{DEMO_MODE ? "Reference design: this diagram describes the original server and model pipeline. The running browser demo uses deterministic rules, IndexedDB, and required human review. Model sampling and server metrics shown here are design references." : "Server pipeline reference architecture."}</p><ReferenceArchitectureView /></>;
 }

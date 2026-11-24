@@ -64,7 +64,7 @@ test("extracts a real two-page PDF and preserves page boundaries", async ({ page
 test("rejects more than three selected papers without partial import", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Choose physics papers", { exact: true }).setInputFiles([1,2,3,4].map((n) => ({ name: "paper-" + n + ".txt", mimeType: "text/plain", buffer: Buffer.from(paper) })));
-  await expect(page.getByRole("alert")).toContainText("at most 3 papers");
+  await expect(page.getByRole("alert", { name: "Paper import errors" })).toContainText("at most 3 papers");
   await expect(page.getByTestId("question-count")).toHaveCount(0);
 });
 

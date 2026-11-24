@@ -314,7 +314,7 @@ export function PipelineView({
             {/* Critic */}
             <DiagramNode
               icon={ShieldCheck}
-              label="Critic"
+              label={DEMO_MODE ? "Validation" : "Critic"}
               sub="rubric gate"
               tone="amber"
               active={running}
@@ -327,7 +327,7 @@ export function PipelineView({
             <DiagramNode
               icon={GitBranch}
               label="Route"
-              sub="≥0.85 → auto"
+              sub={DEMO_MODE ? "review required" : "≥0.85 → auto"}
               tone="emerald"
               active={running}
               count={done}

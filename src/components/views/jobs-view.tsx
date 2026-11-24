@@ -85,6 +85,7 @@ export function JobsView({
         <TabsContent value="upload" className="mt-4"><PaperUpload onJobCreated={onJobCreated} /></TabsContent>
 
         <TabsContent value="sample" className="mt-4">
+          <p className="mb-4 text-xs text-muted-foreground">Illustrative pre-segmented questions. To demonstrate actual document extraction, use Upload papers with your own file.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SAMPLE_PAPERS.map((p) => {
               const Icon = p.kind === "clean" ? FileText : p.kind === "scanned" ? ScanLine : ImageIcon;

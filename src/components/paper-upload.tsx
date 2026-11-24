@@ -85,7 +85,7 @@ export function PaperUpload({ onJobCreated }: { onJobCreated: (job: Job) => void
         </div>
       </div>
       {busy && <p role="status" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> {message || "Saving papers…"}</p>}
-      {errors.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-rose-500">{errors.map((error, index) => <li key={index}>{error}</li>)}</ul>}
+      {errors.length > 0 && <ul role="alert" aria-label="Paper import errors" className="list-disc pl-5 text-sm text-rose-500">{errors.map((error, index) => <li key={index}>{error}</li>)}</ul>}
       {papers.map((paper, index) => {
         const result = count(paper.text);
         return <div key={paper.filename + index} className="space-y-2 rounded-lg border p-4">

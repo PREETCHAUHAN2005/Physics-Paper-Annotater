@@ -73,8 +73,9 @@ export const api = {
   downloadExport: async (id: string, format: "json" | "jsonl" | "csv") => {
     let contents: string;
     if (DEMO_MODE) {
-      const [{ finals }, { exportRecords }] = await Promise.all([api.getFinals(id), import("@/lib/exports")]);
-      contents = exportRecords(finals, format);
+      const [{ finals }, { units }, { job }, { exportRecords }] = await Promise.all([api.getFinals(id), api.getUnits(id), api.getJob(id), import("@/lib/exports")]);
+      const sources = Object.fromEntries(units.map((unit) => [unit.id, { filename: job.filename, page: unit.page, label: unit.sourceLabel }]));
+      contents = exportRecords(finals, format, sources);
     } else {
       const response = await fetch(api.exportUrl(id, format));
       if (!response.ok) throw new Error("Export failed: " + response.status);

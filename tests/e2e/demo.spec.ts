@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 const paper = "1. A resistor has resistance 5 ohm in a circuit.\n2. Find the focal length of a convex lens.\n3. A capacitor stores charge in a dielectric.";
 test("outside paper -> suggestions -> review -> export -> reload", async ({ page }) => {
@@ -63,4 +66,30 @@ test("rejects more than three selected papers without partial import", async ({ 
   await page.getByLabel("Choose physics papers", { exact: true }).setInputFiles([1,2,3,4].map((n) => ({ name: "paper-" + n + ".txt", mimeType: "text/plain", buffer: Buffer.from(paper) })));
   await expect(page.getByRole("alert")).toContainText("at most 3 papers");
   await expect(page.getByTestId("question-count")).toHaveCount(0);
+});
+
+
+test("imports a folder containing three outside papers", async ({ page }) => {
+  const folder = await mkdtemp(path.join(tmpdir(), "annotateiq-papers-"));
+  await Promise.all([1,2,3].map((n) => writeFile(path.join(folder, "outside-" + n + ".txt"), paper)));
+  await page.goto("/");
+  await page.getByLabel("Choose paper folder", { exact: true }).setInputFiles(folder);
+  await expect(page.getByTestId("question-count")).toHaveCount(3);
+  await page.getByRole("button", { name: "Create 3 paper jobs", exact: true }).click();
+  for (const n of [1,2,3]) await expect(page.getByText("outside-" + n + ".txt", { exact: true }).first()).toBeVisible();
+});
+
+test("OCR extracts real text from a scanned PDF", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setContent('<div style="width:1200px;height:300px;background:white;color:black;font:30px Arial;padding:40px;box-sizing:border-box"><p>Q1. A resistor has resistance 5 ohm in a circuit.</p><p>Q2. A convex lens forms an image at its focal length.</p></div>');
+  const image = await page.locator("div").screenshot();
+  const pdf = await PDFDocument.create();
+  const png = await pdf.embedPng(image);
+  const pdfPage = pdf.addPage([1200, 300]);
+  pdfPage.drawImage(png, { x: 0, y: 0, width: 1200, height: 300 });
+  await page.goto("/");
+  await page.getByRole("checkbox", { name: /Enable OCR/ }).check();
+  await page.getByLabel("Choose physics papers", { exact: true }).setInputFiles({ name: "scanned-physics.pdf", mimeType: "application/pdf", buffer: Buffer.from(await pdf.save()) });
+  await expect(page.getByTestId("question-count")).toHaveText("2 questions detected", { timeout: 150_000 });
+  await expect(page.getByLabel("Extracted text: scanned-physics.pdf")).toHaveValue(/resistor/i);
 });

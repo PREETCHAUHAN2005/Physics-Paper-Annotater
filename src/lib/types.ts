@@ -19,6 +19,7 @@ export type Unit = {
   jobId: string;
   seq: number;
   page: number;
+  sourceLabel?: string;
   stem: string | null;
   rawText: string;
   optionsJson: string | null;

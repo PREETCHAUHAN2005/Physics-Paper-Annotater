@@ -17,9 +17,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const result = units.map((u) => {
     const gold = u.goldPayload ? JSON.parse(u.goldPayload) : null;
     const predicted = u.final ? JSON.parse(u.final.payload) : null;
-    const events = u.qualityEvents
-      ? undefined
-      : undefined;
     return {
       unitId: u.id,
       seq: u.seq,

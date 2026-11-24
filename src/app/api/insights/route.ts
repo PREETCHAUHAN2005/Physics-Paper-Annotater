@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { JobTrend } from "@/lib/types";
 import { db } from "@/lib/db";
 import { fleissKappa } from "@/lib/scoring";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const jobs = await db.job.findMany({ orderBy: { createdAt: "asc" } });
 
-  const jobTrends = [];
+  const jobTrends: JobTrend[] = [];
   let cumulativeUnits = 0;
   let cumulativeAuto = 0;
   let cumulativeHuman = 0;
